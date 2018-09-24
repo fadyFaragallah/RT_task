@@ -22,46 +22,6 @@ void getPassoword();
 void enableTimer0();
 
 
-ISR(INT0_vect)
-{
-	int i;
-	unsigned char equals = 1;
-	for(i = 0; i<CORRECT_PASSWORD_LENGTH; i++)
-	{
-		if(enteredPassword[i] != correctPassword[i])
-		{
-			equals = 0;
-			break;	
-		}
-	}
-	
-	if(equals)
-	{
-		correctPasswordEntered();
-	}
-	
-	else
-	{
-		wrongPasswordEntered();
-	}
-	
-}
-
-ISR(TIMER0_COMP_vect)
-{
-	//used to count exactly 4 * 250ms = 1 s
-	static int quarter_second_counter = 0;
-
-	quarter_second_counter++;
-	
-	if(quarter_second_counter==4) //every 3 seconds exactly
-	{
-		PORTD ^= (0b11 << 3);
-		quarter_second_counter = 0;
-	}
-}
-
-
 int main(void)
 {
 	
@@ -77,8 +37,10 @@ int main(void)
 
 	getPassoword();
 
-    while (running) 
+    while (1) 
     {		
+			if(!running) break;
+			
 			if(continueTakingPasswords)
 			{	
 				char inputChar = Keypad_getkey();
@@ -136,7 +98,8 @@ void init_GPIO()
 	PORTD |= 1<<2;
 	SFIOR |= 1<<2;
 	MCUCR |= 0b10;
-	GICR |= 1<<6;
+	MCUCSR &= ~(1<<6);
+	GICR |= 0b11<<5;
 }
 
 void getPassoword()
@@ -166,3 +129,49 @@ void enableTimer0()
 }
 
 
+
+ISR(INT0_vect)
+{
+	int i;
+	unsigned char equals = 1;
+	for(i = 0; i<CORRECT_PASSWORD_LENGTH; i++)
+	{
+		if(enteredPassword[i] != correctPassword[i])
+		{
+			equals = 0;
+			break;
+		}
+	}
+	
+	if(equals)
+	{
+		correctPasswordEntered();
+	}
+	
+	else
+	{
+		wrongPasswordEntered();
+	}
+	
+}
+
+
+ISR(INT2_vect)
+{
+	LCD_Send_A_Character('x');
+	running = 0;
+}
+
+ISR(TIMER0_COMP_vect)
+{
+	//used to count exactly 4 * 250ms = 1 s
+	static int quarter_second_counter = 0;
+
+	quarter_second_counter++;
+	
+	if(quarter_second_counter==4) //every 3 seconds exactly
+	{
+		PORTD ^= (0b11 << 3);
+		quarter_second_counter = 0;
+	}
+}
